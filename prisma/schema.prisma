@@ -1,0 +1,168 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  AUDITOR
+  AUDITEE
+}
+
+enum ComplianceStatus {
+  COMPLIANT
+  PARTIAL
+  NON_COMPLIANT
+  NOT_APPLICABLE
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role
+  createdAt DateTime @default(now())
+}
+
+model Organization {
+  id         String   @id @default(cuid())
+  name       String
+  sector     String
+  employees  Int
+  systemType String
+  createdAt  DateTime @default(now())
+  assets     Asset[]
+}
+
+model Asset {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  name           String
+  owner          String
+  location       String
+  type           String
+  cia            String
+  createdAt      DateTime     @default(now())
+
+  selections   AssetVulnerability[]
+  auditResults AuditResult[]
+  findings     Finding[]
+  evidences    Evidence[]
+}
+
+model Vulnerability {
+  id          String               @id @default(cuid())
+  name        String               @unique
+  category    String
+  defaultLike Int
+  defaultImp  Int
+  selections  AssetVulnerability[]
+}
+
+model AssetVulnerability {
+  id              String        @id @default(cuid())
+  assetId         String
+  vulnerabilityId String
+  asset           Asset         @relation(fields: [assetId], references: [id])
+  vulnerability   Vulnerability @relation(fields: [vulnerabilityId], references: [id])
+
+  likelihood Int
+  impact     Int
+  riskScore  Int
+  riskLevel  String
+  createdAt  DateTime @default(now())
+
+  @@unique([assetId, vulnerabilityId])
+}
+
+model Control {
+  id             String        @id @default(cuid())
+  framework      String
+  name           String
+  mappedVulnName String?
+  auditResults   AuditResult[]
+  evidences      Evidence[]
+  findings       Finding[]
+}
+
+enum AuditStatus {
+  COMPLIANT
+  PARTIAL
+  NON_COMPLIANT
+  NOT_APPLICABLE
+}
+
+model AuditResult {
+  id        String      @id @default(cuid())
+  assetId   String
+  controlId String
+  status    AuditStatus @default(NON_COMPLIANT)
+  notes     String?
+  createdAt DateTime    @default(now())
+
+  asset   Asset   @relation(fields: [assetId], references: [id])
+  control Control @relation(fields: [controlId], references: [id])
+
+  @@unique([assetId, controlId])
+}
+
+model Evidence {
+  id         String   @id @default(cuid())
+  assetId    String
+  controlId  String
+  fileName   String
+  filePath   String // contoh: /uploads/assetId/controlId/file.pdf
+  mimeType   String?
+  uploadedAt DateTime @default(now())
+
+  asset   Asset   @relation(fields: [assetId], references: [id])
+  control Control @relation(fields: [controlId], references: [id])
+
+  @@index([assetId])
+  @@index([controlId])
+}
+
+enum FindingStatus {
+  OPEN
+  CLOSED
+}
+
+enum RiskTreatment {
+  MITIGATE
+  ACCEPT
+  TRANSFER
+  AVOID
+}
+
+model Finding {
+  id        String  @id @default(cuid())
+  assetId   String
+  controlId String
+  asset     Asset   @relation(fields: [assetId], references: [id])
+  control   Control @relation(fields: [controlId], references: [id])
+
+  issue    String
+  risk     String // Low/Medium/High/Critical
+  severity String // Low/Medium/High/Critical
+  status   FindingStatus @default(OPEN)
+
+  rootCause      String?
+  recommendation String
+  riskTreatment  RiskTreatment @default(MITIGATE)
+
+  owner       String?
+  dueDate     DateTime?
+  evidenceRef String? // optional: manual ref/link
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([assetId, controlId, issue])
+  @@index([assetId])
+  @@index([controlId])
+}
