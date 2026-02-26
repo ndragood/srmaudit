@@ -36,13 +36,10 @@ model Organization {
   sector      String
   employees   Int
   systemType  String
-
-  // ✅ Module 2: exposure level tersimpan di DB
-  exposureLevel String @default("LOW")  // LOW | MEDIUM | HIGH
+  
+  exposureLevel String @default("LOW")
   exposureScore Int    @default(0)
-
   createdAt   DateTime @default(now())
-
   assets            Asset[]
   auditAssignments  AuditAssignment[]
 }
@@ -72,6 +69,8 @@ model Asset {
   cia            String
   createdAt      DateTime     @default(now())
 
+  criticalityScore Int    @default(0)
+  criticalityLevel String @default("LOW")
   selections   AssetVulnerability[]
   auditResults AuditResult[]
   findings     Finding[]

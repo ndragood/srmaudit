@@ -1,6 +1,6 @@
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { createAsset, deleteAsset } from "./actions";
-import Link from "next/link";
 
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -9,7 +9,6 @@ import { Prisma } from "@prisma/client";
 export default async function AssetsPage() {
   const session = await getServerSession(authOptions);
 
-  // guard: wajib login
   if (!session?.user) {
     return (
       <div className="text-sm text-gray-600">
@@ -26,113 +25,113 @@ export default async function AssetsPage() {
 
   const whereCondition: Prisma.AssetWhereInput = {};
 
-  // ✅ AUDITOR: hanya boleh lihat asset dari org yang dia di-assign
   if (role === "AUDITOR") {
     whereCondition.organization = {
-      auditAssignments: {
-        some: { auditorId: userId },
-      },
+      auditAssignments: { some: { auditorId: userId } },
     };
   }
 
-  // Ambil organisasi untuk dropdown create asset (ADMIN only)
-  const organizations =
+  const [assets, organizations] = await Promise.all([
+    prisma.asset.findMany({
+      where: whereCondition,
+      include: { organization: true },
+      orderBy: { createdAt: "desc" },
+    }),
     role === "ADMIN"
-      ? await prisma.organization.findMany({
-          orderBy: { createdAt: "desc" },
-          select: { id: true, name: true, sector: true, employees: true, systemType: true },
-        })
-      : [];
-
-  const assets = await prisma.asset.findMany({
-    where: whereCondition,
-    orderBy: { createdAt: "desc" },
-  });
+      ? prisma.organization.findMany({ orderBy: { createdAt: "desc" } })
+      : Promise.resolve([]),
+  ]);
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <h1 className="text-3xl font-bold tracking-tight">Assets</h1>
 
         {role === "ADMIN" && (
-          <div className="flex gap-3">
-            <Link className="text-sm underline text-blue-600" href="/admin/organizations">
+          <div className="flex gap-4 text-sm">
+            <Link className="underline text-blue-600" href="/admin/organizations">
               Manage Organizations
             </Link>
-            <Link className="text-sm underline text-blue-600" href="/admin/assignments">
+            <Link className="underline text-blue-600" href="/admin/assignments">
               Assignments
             </Link>
           </div>
         )}
       </div>
 
-      {/* 🔥 Form hanya ADMIN */}
+      {/* ✅ Create Asset form (Admin only) */}
       {role === "ADMIN" && (
         <form action={createAsset} className="bg-white shadow-md rounded-xl p-6 space-y-6">
           <div className="text-lg font-semibold">Create Asset</div>
 
-          {/* Organization selector (WAJIB) */}
           <div>
             <label className="text-sm font-medium">Organization</label>
             <select
               name="organizationId"
-              className="w-full border border-gray-300 rounded-lg p-2 mt-1"
               required
               defaultValue=""
+              className="w-full border border-gray-300 rounded-lg p-2 mt-1"
             >
               <option value="" disabled>
                 -- Select organization --
               </option>
               {organizations.map((o) => (
                 <option key={o.id} value={o.id}>
-                  {o.name} • {o.sector} • {o.systemType} • {o.employees} employees
+                  {o.name} • {o.sector}
                 </option>
               ))}
             </select>
-
             {organizations.length === 0 && (
-              <div className="text-xs text-gray-500 mt-2">
-                Belum ada organization. Buat dulu di{" "}
-                <Link className="underline text-blue-600" href="/admin/organizations">
-                  /admin/organizations
-                </Link>
-                .
+              <div className="text-xs text-gray-500 mt-1">
+                Belum ada organization. Buat dulu di <b>/admin/organizations</b>.
               </div>
             )}
           </div>
 
-          {/* Fields asset */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="text-sm font-medium">Asset Name</label>
-              <input name="name" className="w-full border rounded-lg p-2 mt-1" required />
+              <input
+                name="name"
+                placeholder="e.g., Finance DB"
+                className="w-full border border-gray-300 rounded-lg p-2 mt-1"
+                required
+              />
             </div>
 
             <div>
               <label className="text-sm font-medium">Owner</label>
-              <input name="owner" className="w-full border rounded-lg p-2 mt-1" placeholder="IT Department" />
+              <input
+                name="owner"
+                placeholder="e.g., IT Department"
+                className="w-full border border-gray-300 rounded-lg p-2 mt-1"
+              />
             </div>
 
             <div>
               <label className="text-sm font-medium">Location</label>
-              <input name="location" className="w-full border rounded-lg p-2 mt-1" placeholder="Cloud Server" />
+              <input
+                name="location"
+                placeholder="e.g., Cloud Server"
+                className="w-full border border-gray-300 rounded-lg p-2 mt-1"
+              />
             </div>
 
             <div>
               <label className="text-sm font-medium">Type</label>
               <input
                 name="type"
-                className="w-full border rounded-lg p-2 mt-1"
                 placeholder="Application / Server / Data"
+                className="w-full border border-gray-300 rounded-lg p-2 mt-1"
               />
             </div>
 
             <div>
               <label className="text-sm font-medium">CIA</label>
-              <select name="cia" className="w-full border rounded-lg p-2 mt-1" defaultValue="Medium">
-                <option value="High">High</option>
-                <option value="Medium">Medium</option>
+              <select name="cia" defaultValue="Medium" className="w-full border border-gray-300 rounded-lg p-2 mt-1">
                 <option value="Low">Low</option>
+                <option value="Medium">Medium</option>
+                <option value="High">High</option>
               </select>
             </div>
           </div>
@@ -143,13 +142,14 @@ export default async function AssetsPage() {
         </form>
       )}
 
-      {/* List assets */}
+      {/* ✅ List Assets */}
       <div className="bg-white shadow-md rounded-xl overflow-hidden">
         <div className="grid grid-cols-6 gap-2 font-semibold bg-gray-50 p-4 text-sm">
           <div className="col-span-2">Name</div>
           <div>Type</div>
           <div>CIA</div>
-          <div className="col-span-2">Actions</div>
+          <div>Criticality</div>
+          <div>Actions</div>
         </div>
 
         {assets.length === 0 ? (
@@ -167,6 +167,7 @@ export default async function AssetsPage() {
                 >
                   {a.name}
                 </Link>
+                <div className="text-xs text-gray-500">{a.organization?.name}</div>
               </div>
 
               <div>{a.type}</div>
@@ -175,8 +176,13 @@ export default async function AssetsPage() {
                 <span className="px-2 py-1 bg-gray-100 rounded text-xs font-medium">{a.cia}</span>
               </div>
 
-              <div className="col-span-2">
-                {/* 🔥 Delete hanya ADMIN */}
+              <div>
+                <span className="px-2 py-1 bg-gray-100 rounded text-xs font-semibold">
+                  {a.criticalityLevel} (score {a.criticalityScore})
+                </span>
+              </div>
+
+              <div>
                 {role === "ADMIN" ? (
                   <form
                     action={async () => {
@@ -195,6 +201,10 @@ export default async function AssetsPage() {
             </div>
           ))
         )}
+      </div>
+
+      <div className="text-xs text-gray-500">
+        Criticality dihitung otomatis dari <b>Organization ExposureScore</b> + <b>CIA</b> dan disimpan ke DB (Module 3).
       </div>
     </div>
   );
