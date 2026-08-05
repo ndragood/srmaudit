@@ -2,36 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { createOrganization, deleteOrganization } from "./actions";
-
-function computeExposureLevel(sector: string, employees: number, systemType: string) {
-  const s = (sector || "").toLowerCase();
-  const t = (systemType || "").toLowerCase();
-
-  const systemScore =
-    t.includes("cloud") ? 3 :
-    t.includes("web") ? 2 :
-    t.includes("mobile") ? 2 :
-    (t.includes("internal") || t.includes("network")) ? 1 :
-    1;
-
-  const employeeScore =
-    employees >= 1000 ? 3 :
-    employees >= 200 ? 2 :
-    1;
-
-  const highRiskSectors = ["finance", "bank", "health", "hospital", "education", "university", "government"];
-  const sectorScore = highRiskSectors.some((k) => s.includes(k)) ? 2 : 1;
-
-  const score = systemScore + employeeScore + sectorScore;
-
-  const exposure =
-    score >= 7 ? "HIGH" :
-    score >= 5 ? "MEDIUM" :
-    "LOW";
-
-  return { exposure, score, breakdown: { systemScore, employeeScore, sectorScore } };
-}
+import { createOrganization, deleteOrganization, recomputeExposure } from "./actions";
 
 export default async function AdminOrganizationsPage() {
   const session = await getServerSession(authOptions);
@@ -104,62 +75,70 @@ export default async function AdminOrganizationsPage() {
         </button>
 
         <div className="text-xs text-gray-500">
-          Exposure level dihitung otomatis dari sector + employees + system type (rule-based).
+          Exposure level disimpan di DB (LOW/MEDIUM/HIGH) berdasarkan sector + employees + system type.
         </div>
       </form>
 
       <div className="bg-white shadow-md rounded-xl overflow-hidden">
-        <div className="grid grid-cols-7 gap-2 font-semibold bg-gray-50 p-4 text-sm">
+        <div className="grid grid-cols-8 gap-2 font-semibold bg-gray-50 p-4 text-sm">
           <div className="col-span-2">Organization</div>
           <div>Sector</div>
           <div>Employees</div>
           <div>System</div>
           <div>Exposure</div>
+          <div>Score</div>
           <div>Action</div>
         </div>
 
         {organizations.length === 0 ? (
           <div className="p-6 text-sm text-gray-500">No organizations yet.</div>
         ) : (
-          organizations.map((o) => {
-            const exp = computeExposureLevel(o.sector, o.employees, o.systemType);
-            return (
-              <div key={o.id} className="grid grid-cols-7 gap-2 p-4 border-t text-sm items-center hover:bg-gray-50 transition">
-                <div className="col-span-2">
-                  <div className="font-medium">{o.name}</div>
-                  <div className="text-xs text-gray-500">
-                    {o._count.assets} assets • {o._count.auditAssignments} assignments
-                  </div>
-                </div>
-
-                <div>{o.sector}</div>
-                <div>{o.employees}</div>
-                <div>{o.systemType}</div>
-
-                <div className="font-semibold">
-                  {exp.exposure} <span className="text-xs text-gray-500">(score {exp.score})</span>
-                </div>
-
-                <div>
-                  <form
-                    action={async () => {
-                      "use server";
-                      await deleteOrganization(o.id);
-                    }}
-                  >
-                    <button className="text-red-600 hover:text-red-800 hover:underline transition font-medium">
-                      Delete
-                    </button>
-                  </form>
+          organizations.map((o) => (
+            <div key={o.id} className="grid grid-cols-8 gap-2 p-4 border-t text-sm items-center hover:bg-gray-50 transition">
+              <div className="col-span-2">
+                <div className="font-medium">{o.name}</div>
+                <div className="text-xs text-gray-500">
+                  {o._count.assets} assets • {o._count.auditAssignments} assignments
                 </div>
               </div>
-            );
-          })
+
+              <div>{o.sector}</div>
+              <div>{o.employees}</div>
+              <div>{o.systemType}</div>
+
+              <div className="font-semibold">{o.exposureLevel}</div>
+              <div className="text-sm">{o.exposureScore}</div>
+
+              <div className="flex gap-3">
+                <form
+                  action={async () => {
+                    "use server";
+                    await recomputeExposure(o.id);
+                  }}
+                >
+                  <button className="text-blue-600 hover:text-blue-800 hover:underline transition font-medium">
+                    Recompute
+                  </button>
+                </form>
+
+                <form
+                  action={async () => {
+                    "use server";
+                    await deleteOrganization(o.id);
+                  }}
+                >
+                  <button className="text-red-600 hover:text-red-800 hover:underline transition font-medium">
+                    Delete
+                  </button>
+                </form>
+              </div>
+            </div>
+          ))
         )}
       </div>
 
       <div className="text-xs text-gray-500">
-        Next: create asset wajib pilih organization (sudah diubah). Ini memenuhi Module 2 requirement (org profile + exposure level).
+        Next: Create asset wajib pilih organization (sudah kamu ubah). Ini memenuhi Module 2 requirement (org profile + exposure level tersimpan).
       </div>
     </div>
   );

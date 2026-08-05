@@ -43,7 +43,7 @@ export async function deleteUser(userId: string) {
   const session = await getServerSession(authOptions);
   requireAdmin(session);
 
-  const myId = (session.user as any)?.id;
+  const myId = session?.user ? (session.user as any)?.id : null;
   if (myId && userId === myId) throw new Error("Tidak bisa delete akun sendiri.");
 
   await prisma.$transaction([

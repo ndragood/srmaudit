@@ -48,7 +48,7 @@ export async function uploadEvidence(assetId: string, controlId: string, formDat
       controlId,
       fileName: file.name,
       filePath: publicPath,
-    
+      mimeType: file.type,
     },
   });
 

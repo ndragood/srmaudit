@@ -40,19 +40,18 @@ export default function LoginPage() {
       return;
     }
 
-    // ✅ IMPORTANT: force server components (RootLayout) re-fetch session
     router.replace(res.url || callbackUrl || "/assets");
     router.refresh();
   }
 
   return (
-    <div className="min-h-[70vh] flex items-center justify-center px-4">
+    <div className="w-full flex-1 bg-gray-100 flex items-center justify-center p-4">
       <form
         onSubmit={onSubmit}
-        className="bg-white shadow-md rounded-xl p-6 w-full max-w-sm space-y-4"
+        className="bg-white shadow-md rounded-xl p-6 w-full max-w-sm space-y-4 border border-gray-200"
       >
         <div>
-          <div className="text-2xl font-bold">Login</div>
+          <div className="text-2xl font-bold text-gray-900">Login</div>
           <div className="text-xs text-gray-500">SRM Audit System</div>
         </div>
 
@@ -64,8 +63,9 @@ export default function LoginPage() {
 
         <input
           name="email"
+          type="email"
           placeholder="Email"
-          className="border p-2 w-full rounded"
+          className="border border-gray-300 p-2 w-full rounded text-sm text-gray-900 focus:outline-none focus:border-black"
           required
         />
 
@@ -73,13 +73,13 @@ export default function LoginPage() {
           name="password"
           type="password"
           placeholder="Password"
-          className="border p-2 w-full rounded"
+          className="border border-gray-300 p-2 w-full rounded text-sm text-gray-900 focus:outline-none focus:border-black"
           required
         />
 
         <button
           disabled={loading}
-          className="bg-black text-white px-4 py-2 rounded w-full disabled:opacity-60"
+          className="bg-black text-white px-4 py-2 rounded w-full disabled:opacity-60 font-medium hover:bg-gray-800 transition"
         >
           {loading ? "Signing in..." : "Sign in"}
         </button>
