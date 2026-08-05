@@ -1,8 +1,17 @@
 import OpenAI from "openai";
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json(
+        { error: "Unauthorized. Silakan login terlebih dahulu." },
+        { status: 401 }
+      );
+    }
     const { message } = (await req.json()) as { message?: string };
 
     const userMessage = String(message ?? "").trim();

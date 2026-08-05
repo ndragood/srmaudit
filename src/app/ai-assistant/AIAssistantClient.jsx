@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-export default function AIAssistant() {
+export default function AIAssistantClient() {
   const [input, setInput] = useState("");
   const [reply, setReply] = useState("");
   const [loading, setLoading] = useState(false);
