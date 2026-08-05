@@ -16,6 +16,7 @@ export default withAuth(
     return NextResponse.next();
   },
   {
+    secret: process.env.NEXTAUTH_SECRET || "srm_audit_secret_2026",
     callbacks: {
       authorized: ({ token, req }) => {
         const pathname = req.nextUrl.pathname;
