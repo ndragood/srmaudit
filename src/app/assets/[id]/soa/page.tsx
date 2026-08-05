@@ -10,8 +10,9 @@ function badge(status: string) {
   return `${base} bg-gray-100 text-gray-700`; // NOT_APPLICABLE
 }
 
-export default async function SoaPage({ params }: { params: { id: string } }) {
-  const asset = await prisma.asset.findFirst({ where: { id: params.id } });
+export default async function SoaPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const asset = await prisma.asset.findFirst({ where: { id } });
   if (!asset) return <div className="text-sm text-gray-500">Asset not found</div>;
 
   // Ambil audit results + control

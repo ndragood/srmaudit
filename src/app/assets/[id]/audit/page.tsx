@@ -6,10 +6,11 @@ import { uploadEvidence } from "./evidenceActions";
 export default async function AuditPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = await params;
   const asset = await prisma.asset.findFirst({
-    where: { id: params.id },
+    where: { id },
   });
 
   if (!asset)

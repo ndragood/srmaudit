@@ -18,9 +18,10 @@ function statusBadge(status: "OPEN" | "CLOSED") {
 export default async function FindingsPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const asset = await prisma.asset.findFirst({ where: { id: params.id } });
+  const { id } = await params;
+  const asset = await prisma.asset.findFirst({ where: { id } });
   if (!asset)
     return <div className="text-sm text-gray-500">Asset not found</div>;
 

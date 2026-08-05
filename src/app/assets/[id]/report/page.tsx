@@ -59,10 +59,11 @@ function isOverdue(status?: string | null, due?: Date | null) {
 export default async function ReportPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = await params;
   const asset = await prisma.asset.findFirst({
-    where: { id: params.id },
+    where: { id },
     include: {
       selections: { include: { vulnerability: true } },
     },
