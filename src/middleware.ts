@@ -1,36 +1,31 @@
-import { withAuth } from "next-auth/middleware";
-import { NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
+import { NextResponse, type NextRequest } from "next/server";
 
-export default withAuth(
-  function middleware(req) {
-    const pathname = req.nextUrl.pathname;
+export async function middleware(req: NextRequest) {
+  const pathname = req.nextUrl.pathname;
+  const secret = process.env.NEXTAUTH_SECRET || "srm_audit_secret_2026";
 
-    // admin-only
-    if (pathname.startsWith("/admin")) {
-      const role = (req.nextauth.token as any)?.role;
-      if (role !== "ADMIN") {
-        return NextResponse.redirect(new URL("/assets", req.url));
-      }
-    }
+  // Ambil token secara eksplisit dengan dukungan secureCookie untuk HTTPS di Vercel
+  const token = await getToken({
+    req,
+    secret,
+    secureCookie: req.nextUrl.protocol === "https:",
+  });
 
-    return NextResponse.next();
-  },
-  {
-    secret: process.env.NEXTAUTH_SECRET || "srm_audit_secret_2026",
-    callbacks: {
-      authorized: ({ token, req }) => {
-        const pathname = req.nextUrl.pathname;
-
-        // protect /assets and /admin
-        if (pathname.startsWith("/assets") || pathname.startsWith("/admin")) {
-          return !!token; // harus login
-        }
-
-        return true; // route lain bebas
-      },
-    },
+  // 1. Proteksi rute /assets dan /admin (harus login)
+  if ((pathname.startsWith("/assets") || pathname.startsWith("/admin")) && !token) {
+    const loginUrl = new URL("/login", req.url);
+    loginUrl.searchParams.set("callbackUrl", req.url);
+    return NextResponse.redirect(loginUrl);
   }
-);
+
+  // 2. Proteksi rute /admin (khusus ADMIN)
+  if (pathname.startsWith("/admin") && (token as any)?.role !== "ADMIN") {
+    return NextResponse.redirect(new URL("/assets", req.url));
+  }
+
+  return NextResponse.next();
+}
 
 export const config = {
   matcher: ["/assets/:path*", "/admin/:path*"],
